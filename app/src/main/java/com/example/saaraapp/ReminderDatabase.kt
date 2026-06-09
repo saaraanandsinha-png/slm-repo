@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [ReminderEntity::class], version = 1, exportSchema = false)
+@Database(entities = [ReminderEntity::class], version = 2, exportSchema = false)
 @TypeConverters(TagsConverter::class)
 abstract class ReminderDatabase : RoomDatabase() {
 
@@ -22,7 +22,7 @@ abstract class ReminderDatabase : RoomDatabase() {
                     context.applicationContext,
                     ReminderDatabase::class.java,
                     "reminder_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

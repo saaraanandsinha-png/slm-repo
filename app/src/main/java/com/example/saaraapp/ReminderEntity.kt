@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import java.time.LocalDate
 
 @Entity(tableName = "reminders")
 @TypeConverters(TagsConverter::class)
@@ -13,7 +14,8 @@ data class ReminderEntity(
     val originalMessage: String,
     val tags: List<String>,
     val category: String,
-    val time: Long
+    val time: Long,
+    val reminderDate: Long? = null   // stored as epoch day (LocalDate.toEpochDay())
 )
 
 class TagsConverter {
@@ -25,21 +27,22 @@ class TagsConverter {
         if (value.isEmpty()) emptyList() else value.split(",")
 }
 
-// Convert between ReminderEntity (database) and ReminderItem (UI)
 fun ReminderEntity.toReminderItem() = ReminderItem(
-    id       = id,
-    sender   = sender,
+    id              = id,
+    sender          = sender,
     originalMessage = originalMessage,
-    tags     = tags,
-    category = ReminderCategory.valueOf(category),
-    time     = time
+    tags            = tags,
+    category        = ReminderCategory.valueOf(category),
+    time            = time,
+    reminderDate    = reminderDate?.let { LocalDate.ofEpochDay(it) }
 )
 
 fun ReminderItem.toEntity() = ReminderEntity(
-    id       = id,
-    sender   = sender,
+    id              = id,
+    sender          = sender,
     originalMessage = originalMessage,
-    tags     = tags,
-    category = category.name,
-    time     = time
+    tags            = tags,
+    category        = category.name,
+    time            = time,
+    reminderDate    = reminderDate?.toEpochDay()
 )

@@ -29,7 +29,8 @@ class WhatsAppNotificationService : NotificationListenerService() {
             originalMessage = message,
             tags            = KeywordExtractor.extractTags(message),
             category        = KeywordExtractor.categorize(message),
-            time            = sbn.postTime
+            time            = sbn.postTime,
+            reminderDate    = DateParser.extractFrom(message)
         )
 
         // Save to Room database on IO thread
