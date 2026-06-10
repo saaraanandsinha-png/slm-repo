@@ -33,9 +33,9 @@ class WhatsAppNotificationService : NotificationListenerService() {
         if (!KeywordExtractor.isRelevant(message)) return
 
         val reminder = ReminderItem(
-            // Use packageName + sbn.id (without postTime) so that WhatsApp
-            // updating its own notification doesn't create a duplicate entry
-            id              = "${sbn.packageName}_${sbn.id}",
+            // Hash of sender + message text: same content = same ID (deduplicates
+            // WhatsApp re-posting the same notification), different message = new entry
+            id              = "${sbn.packageName}_${(sender + message).hashCode()}",
             sender          = sender,
             originalMessage = message,
             tags            = KeywordExtractor.extractTags(message),
