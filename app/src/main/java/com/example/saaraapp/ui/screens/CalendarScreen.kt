@@ -3,6 +3,8 @@ package com.example.saaraapp.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -273,6 +275,7 @@ fun DayCell(
 }
 
 // ── Reminder card for selected day ────────────────────────────────────────────
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CalendarReminderCard(reminder: ReminderItem) {
     val color = categoryColor(reminder.category)
@@ -282,17 +285,19 @@ fun CalendarReminderCard(reminder: ReminderItem) {
         colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(12.dp)) {
             // Coloured left bar
             Box(
                 modifier = Modifier
                     .width(4.dp)
-                    .height(48.dp)
+                    .heightIn(min = 48.dp)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(2.dp))
                     .background(color)
             )
             Spacer(Modifier.width(12.dp))
             Column {
+                // ── Category + sender ────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${reminder.category.emoji} ${reminder.category.label}",
@@ -308,12 +313,36 @@ fun CalendarReminderCard(reminder: ReminderItem) {
                     )
                 }
                 Spacer(Modifier.height(4.dp))
+                // ── Message body ─────────────────────────────
                 Text(
                     text = reminder.originalMessage,
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2
                 )
+                // ── Tags ─────────────────────────────────────
+                if (reminder.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement   = Arrangement.spacedBy(4.dp)
+                    ) {
+                        reminder.tags.forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = tag,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
