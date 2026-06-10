@@ -15,7 +15,8 @@ data class ReminderEntity(
     val tags: List<String>,
     val category: String,
     val time: Long,
-    val reminderDate: Long? = null   // stored as epoch day (LocalDate.toEpochDay())
+    val reminderDate: Long? = null,     // stored as epoch day (LocalDate.toEpochDay())
+    val reminderDateEnd: Long? = null   // end of range, null if single date
 )
 
 class TagsConverter {
@@ -34,7 +35,8 @@ fun ReminderEntity.toReminderItem() = ReminderItem(
     tags            = tags,
     category        = ReminderCategory.valueOf(category),
     time            = time,
-    reminderDate    = reminderDate?.let { LocalDate.ofEpochDay(it) }
+    reminderDate    = reminderDate?.let { LocalDate.ofEpochDay(it) },
+    reminderDateEnd = reminderDateEnd?.let { LocalDate.ofEpochDay(it) }
 )
 
 fun ReminderItem.toEntity() = ReminderEntity(
@@ -44,5 +46,6 @@ fun ReminderItem.toEntity() = ReminderEntity(
     tags            = tags,
     category        = category.name,
     time            = time,
-    reminderDate    = reminderDate?.toEpochDay()
+    reminderDate    = reminderDate?.toEpochDay(),
+    reminderDateEnd = reminderDateEnd?.toEpochDay()
 )

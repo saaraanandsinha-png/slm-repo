@@ -32,6 +32,8 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
         if (!KeywordExtractor.isRelevant(message)) return
 
+        val (reminderDate, reminderDateEnd) = DateParser.extractRangeFrom(message)
+
         val reminder = ReminderItem(
             // Hash of sender + message text: same content = same ID (deduplicates
             // WhatsApp re-posting the same notification), different message = new entry
@@ -41,7 +43,8 @@ class WhatsAppNotificationService : NotificationListenerService() {
             tags            = KeywordExtractor.extractTags(message),
             category        = KeywordExtractor.categorize(message),
             time            = sbn.postTime,
-            reminderDate    = DateParser.extractFrom(message)
+            reminderDate    = reminderDate,
+            reminderDateEnd = reminderDateEnd
         )
 
         // Save to Room database on IO thread

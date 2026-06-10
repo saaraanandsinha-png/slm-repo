@@ -18,5 +18,6 @@ data class ReminderItem(
     val tags: List<String>,
     val category: ReminderCategory,
     val time: Long,
-    val reminderDate: java.time.LocalDate? = null
+    val reminderDate: java.time.LocalDate? = null,
+    val reminderDateEnd: java.time.LocalDate? = null
 )

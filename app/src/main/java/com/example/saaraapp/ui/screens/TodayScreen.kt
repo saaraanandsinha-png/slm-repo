@@ -28,10 +28,12 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
 
     val todayReminders = remember(reminders) {
         reminders.filter { reminder ->
-            // Use extracted reminderDate if available, otherwise fall back to received time
-            val date = reminder.reminderDate
+            val start = reminder.reminderDate
                 ?: Date(reminder.time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            date == today
+            val end = reminder.reminderDateEnd
+            // Show if today falls anywhere within the reminder's date range
+            if (end != null) !today.isBefore(start) && !today.isAfter(end)
+            else start == today
         }
     }
 

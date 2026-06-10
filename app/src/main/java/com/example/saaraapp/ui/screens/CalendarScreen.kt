@@ -49,11 +49,23 @@ fun CalendarScreen(viewModel: NotificationViewModel = viewModel()) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
-    // Group reminders by date
+    // Group reminders by date — ranged reminders appear on every day in their range
     val remindersByDate: Map<LocalDate, List<ReminderItem>> = remember(reminders) {
-        reminders.groupBy { reminder ->
-            reminder.reminderDate ?: reminder.time.toLocalDate()
+        val map = mutableMapOf<LocalDate, MutableList<ReminderItem>>()
+        reminders.forEach { reminder ->
+            val start = reminder.reminderDate ?: reminder.time.toLocalDate()
+            val end   = reminder.reminderDateEnd
+            if (end != null && !end.isBefore(start)) {
+                var d = start
+                while (!d.isAfter(end)) {
+                    map.getOrPut(d) { mutableListOf() }.add(reminder)
+                    d = d.plusDays(1)
+                }
+            } else {
+                map.getOrPut(start) { mutableListOf() }.add(reminder)
+            }
         }
+        map
     }
 
     // Reminders for the selected day

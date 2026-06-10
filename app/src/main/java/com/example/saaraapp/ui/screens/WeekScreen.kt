@@ -43,12 +43,24 @@ fun WeekScreen(viewModel: NotificationViewModel = viewModel()) {
     val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
     val weekEnd  = weekStart.plusDays(6)
 
-    // Group reminders by date
+    // Group reminders by date — ranged reminders appear on every day in their range
     val remindersByDate: Map<LocalDate, List<ReminderItem>> = remember(reminders) {
-        reminders.groupBy { reminder ->
-            reminder.reminderDate
+        val map = mutableMapOf<LocalDate, MutableList<ReminderItem>>()
+        reminders.forEach { reminder ->
+            val start = reminder.reminderDate
                 ?: Date(reminder.time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            val end = reminder.reminderDateEnd
+            if (end != null && !end.isBefore(start)) {
+                var d = start
+                while (!d.isAfter(end)) {
+                    map.getOrPut(d) { mutableListOf() }.add(reminder)
+                    d = d.plusDays(1)
+                }
+            } else {
+                map.getOrPut(start) { mutableListOf() }.add(reminder)
+            }
         }
+        map
     }
 
     val selectedDayReminders = remindersByDate[selectedDate] ?: emptyList()

@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [ReminderEntity::class], version = 2, exportSchema = false)
+@Database(entities = [ReminderEntity::class], version = 3, exportSchema = false)
 @TypeConverters(TagsConverter::class)
 abstract class ReminderDatabase : RoomDatabase() {
 
