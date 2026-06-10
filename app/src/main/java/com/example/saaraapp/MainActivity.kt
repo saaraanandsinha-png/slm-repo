@@ -1,6 +1,9 @@
 package com.example.saaraapp
 
+import android.app.Activity
+import android.content.ComponentName
 import android.os.Bundle
+import android.service.notification.NotificationListenerService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,6 +29,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Force the NotificationListenerService to rebind — fixes the stale
+        // binding that happens after a reinstall even when permission is granted
+        NotificationListenerService.requestRebind(
+            ComponentName(this, WhatsAppNotificationService::class.java)
+        )
         setContent {
             val settingsViewModel: SettingsViewModel = viewModel()
             val darkThemePref by settingsViewModel.darkTheme.collectAsState()

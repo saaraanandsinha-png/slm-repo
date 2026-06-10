@@ -12,6 +12,11 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        // Service is bound and ready — Android called this after (re)connecting
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val isWhatsApp = sbn.packageName == "com.whatsapp" ||
                          sbn.packageName == "com.whatsapp.w4b"
