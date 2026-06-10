@@ -93,7 +93,7 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(todayReminders) { reminder ->
-                    CalendarReminderCard(reminder)
+                    CalendarReminderCard(reminder, highlight = true)
                 }
                 item { Spacer(Modifier.height(16.dp)) }
             }

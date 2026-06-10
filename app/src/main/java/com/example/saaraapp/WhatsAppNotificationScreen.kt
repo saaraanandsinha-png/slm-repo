@@ -4,8 +4,6 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,19 +22,20 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.saaraapp.ui.components.buildHighlightedMessage
 import java.text.SimpleDateFormat
 import java.util.*
 
 // Colour for each category badge
 private fun categoryColor(category: ReminderCategory): Color = when (category) {
-    ReminderCategory.DEADLINE        -> Color(0xFFE53935)   // red
-    ReminderCategory.ASSIGNMENT      -> Color(0xFF1E88E5)   // blue
-    ReminderCategory.EXAM            -> Color(0xFF43A047)   // green
-    ReminderCategory.MEETING         -> Color(0xFF00897B)   // teal
-    ReminderCategory.REMINDER        -> Color(0xFFFB8C00)   // orange
-    ReminderCategory.SCHEDULE_CHANGE -> Color(0xFF6D4C41)   // brown
-    ReminderCategory.HOLIDAY         -> Color(0xFFE91E8C)   // pink
-    ReminderCategory.OTHER           -> Color(0xFF546E7A)   // grey-blue
+    ReminderCategory.DEADLINE        -> Color(0xFFE53935)
+    ReminderCategory.ASSIGNMENT      -> Color(0xFF1E88E5)
+    ReminderCategory.EXAM            -> Color(0xFF43A047)
+    ReminderCategory.MEETING         -> Color(0xFF00897B)
+    ReminderCategory.REMINDER        -> Color(0xFFFB8C00)
+    ReminderCategory.SCHEDULE_CHANGE -> Color(0xFF6D4C41)
+    ReminderCategory.HOLIDAY         -> Color(0xFFE91E8C)
+    ReminderCategory.OTHER           -> Color(0xFF546E7A)
 }
 
 @Composable
@@ -62,7 +61,6 @@ fun WhatsAppNotificationScreen(modifier: Modifier = Modifier, viewModel: Notific
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp)
     ) {
-        // ── Header ──────────────────────────────────────────────
         Spacer(Modifier.height(20.dp))
         Text(
             text = "📬 WhatsApp Reminders",
@@ -80,7 +78,6 @@ fun WhatsAppNotificationScreen(modifier: Modifier = Modifier, viewModel: Notific
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
 
-        // ── Content ─────────────────────────────────────────────
         when {
             !isGranted -> PermissionCard(onGrant = {
                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -106,15 +103,12 @@ fun WhatsAppNotificationScreen(modifier: Modifier = Modifier, viewModel: Notific
     }
 }
 
-// ── Permission card ──────────────────────────────────────────────────────────
 @Composable
 fun PermissionCard(onGrant: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -136,20 +130,14 @@ fun PermissionCard(onGrant: () -> Unit) {
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onGrant) {
-                Text("Grant Permission")
-            }
+            Button(onClick = onGrant) { Text("Grant Permission") }
         }
     }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
 @Composable
 fun EmptyState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("📭", fontSize = 52.sp)
             Spacer(Modifier.height(12.dp))
@@ -170,31 +158,32 @@ fun EmptyState() {
     }
 }
 
-// ── Reminder card ─────────────────────────────────────────────────────────────
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderCard(reminder: ReminderItem) {
     val time = remember(reminder.time) {
-        SimpleDateFormat("EEE, d MMM · hh:mm a", Locale.ENGLISH)
-            .format(Date(reminder.time))
+        SimpleDateFormat("EEE, d MMM · hh:mm a", Locale.ENGLISH).format(Date(reminder.time))
     }
     val badgeColor = categoryColor(reminder.category)
+    val highlightedMessage = buildHighlightedMessage(
+        message        = reminder.originalMessage,
+        tags           = reminder.tags,
+        highlightColor = badgeColor
+    )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // ── Category badge + sender row ──────────────────────
+            // Category badge + time
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Category badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
@@ -202,16 +191,14 @@ fun ReminderCard(reminder: ReminderItem) {
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "${reminder.category.emoji}  ${reminder.category.label}",
-                        fontSize = 11.sp,
+                        text       = "${reminder.category.emoji}  ${reminder.category.label}",
+                        fontSize   = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = badgeColor
+                        color      = badgeColor
                     )
                 }
-
-                // Time
                 Text(
-                    text = time,
+                    text  = time,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -219,47 +206,23 @@ fun ReminderCard(reminder: ReminderItem) {
 
             Spacer(Modifier.height(10.dp))
 
-            // ── Sender ───────────────────────────────────────────
+            // Sender
             Text(
-                text = "From: ${reminder.sender}",
+                text       = "From: ${reminder.sender}",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface
+                fontSize   = 14.sp,
+                color      = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(Modifier.height(6.dp))
 
-            // ── Message ───────────────────────────────────────────
+            // Full message with keywords highlighted inline
             Text(
-                text = "\"${reminder.originalMessage}\"",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text       = highlightedMessage,
+                fontSize   = 14.sp,
+                color      = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
             )
-
-            // ── Tags ─────────────────────────────────────────────
-            if (reminder.tags.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    reminder.tags.forEach { tag ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = tag,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
