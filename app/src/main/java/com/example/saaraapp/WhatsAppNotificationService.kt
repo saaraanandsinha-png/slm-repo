@@ -22,6 +22,10 @@ class WhatsAppNotificationService : NotificationListenerService() {
                          sbn.packageName == "com.whatsapp.w4b"
         if (!isWhatsApp) return
 
+        // Skip group summary notifications (the "X messages from Y chats" rollup)
+        val isGroupSummary = sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0
+        if (isGroupSummary) return
+
         val extras  = sbn.notification.extras
         val sender  = extras.getString("android.title") ?: "Unknown"
         val message = extras.getCharSequence("android.text")?.toString() ?: ""
@@ -29,7 +33,9 @@ class WhatsAppNotificationService : NotificationListenerService() {
         if (!KeywordExtractor.isRelevant(message)) return
 
         val reminder = ReminderItem(
-            id              = "${sbn.id}_${sbn.postTime}",
+            // Use packageName + sbn.id (without postTime) so that WhatsApp
+            // updating its own notification doesn't create a duplicate entry
+            id              = "${sbn.packageName}_${sbn.id}",
             sender          = sender,
             originalMessage = message,
             tags            = KeywordExtractor.extractTags(message),
