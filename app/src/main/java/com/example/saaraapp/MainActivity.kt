@@ -4,13 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.saaraapp.ui.navigation.BottomNavBar
@@ -24,7 +27,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SaaraAppTheme {
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val darkThemePref by settingsViewModel.darkTheme.collectAsState()
+            val amoledMode    by settingsViewModel.amoledMode.collectAsState()
+            val systemDark    = isSystemInDarkTheme()
+            val darkTheme     = darkThemePref ?: systemDark
+
+            SaaraAppTheme(darkTheme = darkTheme, amoledMode = amoledMode) {
                 val navController = rememberNavController()
                 val backStack by navController.currentBackStackEntryAsState()
                 val current = backStack?.destination?.route

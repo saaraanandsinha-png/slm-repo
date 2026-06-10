@@ -1,29 +1,89 @@
 package com.example.saaraapp.ui.screens
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.saaraapp.NotificationViewModel
+import com.example.saaraapp.SettingsViewModel
 import com.example.saaraapp.ui.components.PreferenceItem
 import com.example.saaraapp.ui.components.SectionHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
-    var darkMode by remember { mutableStateOf(true) }
-    var gpuEnabled by remember { mutableStateOf(true) }
-    var markdownEnabled by remember { mutableStateOf(true) }
+fun SettingsScreen(
+    navController: NavController,
+    settingsViewModel: SettingsViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = viewModel()
+) {
+    val context = LocalContext.current
 
-    var temperature by remember { mutableFloatStateOf(0.7f) }
-    var topP by remember { mutableFloatStateOf(0.9f) }
-    var topK by remember { mutableIntStateOf(40) }
+    val darkThemePref by settingsViewModel.darkTheme.collectAsState()
+    val amoledMode    by settingsViewModel.amoledMode.collectAsState()
+    val systemDark    = isSystemInDarkTheme()
+    val isDark        = darkThemePref ?: systemDark
 
+    // ── Notification access — recheck on every resume ──────────────────────
+    fun checkAccess(): Boolean {
+        val listeners = Settings.Secure.getString(
+            context.contentResolver,
+            "enabled_notification_listeners"
+        )
+        return listeners?.contains(context.packageName) == true
+    }
+
+    var notificationAccessGranted by remember { mutableStateOf(checkAccess()) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationAccessGranted = checkAccess()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // ── Clear-all confirmation dialog ──────────────────────────────────────
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear all reminders?") },
+            text  = { Text("This will permanently delete every saved reminder. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    notificationViewModel.clearAll()
+                    showClearDialog = false
+                }) {
+                    Text("Clear all", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ── UI ─────────────────────────────────────────────────────────────────
     Scaffold(
         topBar = {
             TopAppBar(
@@ -43,63 +103,78 @@ fun SettingsScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
+
+            // ── Appearance ─────────────────────────────────────────────────
             SectionHeader("Appearance")
+
             PreferenceItem(
-                title = "Dark Theme",
-                subtitle = "Enable dark mode for the interface",
-                trailing = { Switch(checked = darkMode, onCheckedChange = { darkMode = it }) }
+                title    = "Dark Theme",
+                subtitle = if (darkThemePref == null) "Following system setting"
+                           else if (isDark) "Enabled" else "Disabled",
+                trailing = {
+                    Switch(
+                        checked         = isDark,
+                        onCheckedChange = { settingsViewModel.setDarkTheme(it) }
+                    )
+                }
             )
+
             PreferenceItem(
-                title = "AMOLED Mode",
-                subtitle = "Pure black background for OLED screens",
-                trailing = { Switch(checked = false, onCheckedChange = { }, enabled = darkMode) }
+                title    = "AMOLED Mode",
+                subtitle = if (!isDark) "Only available in dark mode"
+                           else if (amoledMode) "Pure black background active" else "Off",
+                trailing = {
+                    Switch(
+                        checked         = amoledMode,
+                        onCheckedChange = { settingsViewModel.setAmoledMode(it) },
+                        enabled         = isDark
+                    )
+                }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("Model Parameters")
-            ParameterSlider("Temperature", temperature, 0f..1.5f, "%.1f".format(temperature)) { temperature = it }
-            ParameterSlider("Top-P", topP, 0f..1f, "%.2f".format(topP)) { topP = it }
-            PreferenceItem(title = "Top-K", subtitle = topK.toString())
-            PreferenceItem(title = "Context Length", subtitle = "2048 tokens")
+            // ── Notifications ──────────────────────────────────────────────
+            SectionHeader("Notifications")
+
+            PreferenceItem(
+                title    = "Notification Access",
+                subtitle = if (notificationAccessGranted)
+                               "Granted — reading WhatsApp notifications"
+                           else
+                               "Not granted — tap to enable in system settings",
+                onClick  = {
+                    if (!notificationAccessGranted) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                        )
+                    }
+                },
+                trailing = {
+                    Icon(
+                        imageVector  = if (notificationAccessGranted) Icons.Default.CheckCircle
+                                       else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint         = if (notificationAccessGranted)
+                                           MaterialTheme.colorScheme.primary
+                                       else
+                                           MaterialTheme.colorScheme.error
+                    )
+                }
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("Performance")
+            // ── Data ───────────────────────────────────────────────────────
+            SectionHeader("Data")
+
             PreferenceItem(
-                title = "Use GPU (Vulkan/NNAPI)",
-                subtitle = "Accelerate model inference",
-                trailing = { Switch(checked = gpuEnabled, onCheckedChange = { gpuEnabled = it }) }
+                title    = "Clear All Reminders",
+                subtitle = "Permanently delete all saved reminders",
+                onClick  = { showClearDialog = true }
             )
-            PreferenceItem(title = "CPU Threads", subtitle = "4 threads")
-            PreferenceItem(title = "Memory Limit", subtitle = "2.5 GB")
 
             Spacer(modifier = Modifier.height(32.dp))
         }
-    }
-}
-
-@Composable
-fun ParameterSlider(
-    label: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    valueLabel: String,
-    onValueChange: (Float) -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(valueLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = range,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }

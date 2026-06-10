@@ -1,6 +1,5 @@
 package com.example.saaraapp.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -36,6 +36,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun SaaraAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    amoledMode: Boolean = false,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
@@ -45,14 +46,23 @@ fun SaaraAppTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 
+    // AMOLED: override background and surface to pure black in dark mode
+    val finalColorScheme = if (darkTheme && amoledMode) {
+        colorScheme.copy(
+            background = Color.Black,
+            surface    = Color.Black,
+        )
+    } else {
+        colorScheme
+    }
+
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+        colorScheme = finalColorScheme,
+        typography  = Typography,
+        content     = content
     )
 }
