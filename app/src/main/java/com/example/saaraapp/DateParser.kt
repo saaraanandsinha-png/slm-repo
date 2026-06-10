@@ -4,6 +4,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.MonthDay
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
@@ -48,11 +49,17 @@ object DateParser {
 
     /**
      * Given a full message, returns the best LocalDate found in it.
-     * Checks the extracted tags in priority order.
+     * Runs the date regex directly on the full message first (bypasses the
+     * tag limit), then falls back to relative/day-of-week tags.
      */
     fun extractFrom(message: String): LocalDate? {
-        val tags = KeywordExtractor.extractTags(message)
-        for (tag in tags) {
+        // Priority 1: specific dates found anywhere in the message
+        for (match in KeywordExtractor.DATE_PATTERN.findAll(message)) {
+            val date = parseSpecificDate(match.value.trim())
+            if (date != null) return date
+        }
+        // Priority 2: relative words (today, tomorrow, next monday …)
+        for (tag in KeywordExtractor.extractTags(message)) {
             val date = parse(tag)
             if (date != null) return date
         }
@@ -75,11 +82,14 @@ object DateParser {
 
         for (format in formats) {
             try {
-                val formatter = DateTimeFormatter.ofPattern(format, Locale.ENGLISH)
-                // MonthDay handles dates without year
-                val monthDay  = MonthDay.parse(cleaned, formatter)
-                val date      = monthDay.atYear(today.year)
-                // If date already passed by more than 7 days → next year
+                // parseCaseInsensitive() so "june" matches "MMMM" and "jun" matches "MMM"
+                val formatter = DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern(format)
+                    .toFormatter(Locale.ENGLISH)
+                val monthDay = MonthDay.parse(cleaned, formatter)
+                val date     = monthDay.atYear(today.year)
+                // If date already passed by more than 7 days → assume next year
                 return if (date.isBefore(today.minusDays(7))) date.plusYears(1) else date
             } catch (_: Exception) { }
         }

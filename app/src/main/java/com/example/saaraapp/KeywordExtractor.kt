@@ -56,7 +56,7 @@ object KeywordExtractor {
     )
 
     // Matches: 12th March, March 12, 5 Jan, 12/03, 03-12-2024
-    private val DATE_PATTERN = Regex(
+    val DATE_PATTERN = Regex(
         """(\d{1,2}(st|nd|rd|th)?\s*(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?)""" +
         """|(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?)\s*\d{1,2}(st|nd|rd|th)?""" +
         """|\d{1,2}[/\-]\d{1,2}([/\-]\d{2,4})?)""",
@@ -98,7 +98,7 @@ object KeywordExtractor {
         DATE_PATTERN.findAll(text).forEach { tags.add(it.value.trim()) }
         TIME_PATTERN.findAll(text).forEach { tags.add(it.value.trim()) }
 
-        return tags.distinct().take(5) // max 5 tags per reminder
+        return tags.distinct()
     }
 
     /** Figures out which category best fits the message */
