@@ -22,17 +22,15 @@ object ModelDownloadManager {
      * Filename used to store the model locally.
      * Change MODEL_URL below to the real HuggingFace / CDN link once you have it.
      */
-    private const val MODEL_FILE_NAME = "function_gemma_270m_int8.task"
+    private const val MODEL_FILE_NAME = "functiongemma-270M-it.task"
 
     /**
-     * ⚠️  Replace this with the real download URL for FunctionGemma 270M
-     *     (int8 quantized, MediaPipe .task format) from HuggingFace or Kaggle.
-     *
-     *  Example (placeholder):
-     *  https://huggingface.co/google/function-gemma-270m/resolve/main/function_gemma_270m_int8.task
+     * FunctionGemma 270M IT in MediaPipe .task format.
+     * Source: https://huggingface.co/sasha-denisov/function-gemma-270M-it
+     * Converted from google/functiongemma-270m-it (SafeTensors → TFLite, int8, bundled with tokenizer)
      */
     private const val MODEL_URL =
-        "https://huggingface.co/google/function-gemma-270m/resolve/main/function_gemma_270m_int8.task"
+        "https://huggingface.co/sasha-denisov/function-gemma-270M-it/resolve/main/functiongemma-270M-it.task"
 
     // ── Public API ────────────────────────────────────────────────────────────
 
