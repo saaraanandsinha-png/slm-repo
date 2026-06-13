@@ -193,7 +193,7 @@ class FunctionGemmaHelper(private val context: Context) {
         JSON format:
         {
           "is_reminder": true or false,
-          "category": one of [DEADLINE, ASSIGNMENT, EXAM, MEETING, REMINDER, SCHEDULE_CHANGE, HOLIDAY, OTHER],
+          "category": one of [ACADEMIC, PERSONAL, EVENT, INFO, SCHEDULE_CHANGE, OTHER],
           "date": "new or only date string, or null",
           "original_date": "for SCHEDULE_CHANGE only: the old date being replaced, or null",
           "time": "extracted time string or null",

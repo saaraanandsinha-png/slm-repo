@@ -105,13 +105,13 @@ object KeywordExtractor {
     fun categorize(text: String): ReminderCategory {
         val lower = text.lowercase()
         return when {
-            DEADLINE_KEYWORDS.any { lower.contains(it) }        -> ReminderCategory.DEADLINE
-            ASSIGNMENT_KEYWORDS.any { lower.contains(it) }      -> ReminderCategory.ASSIGNMENT
-            EXAM_KEYWORDS.any { lower.contains(it) }            -> ReminderCategory.EXAM
-            MEETING_KEYWORDS.any { lower.contains(it) }         -> ReminderCategory.MEETING
             SCHEDULE_CHANGE_KEYWORDS.any { lower.contains(it) } -> ReminderCategory.SCHEDULE_CHANGE
-            HOLIDAY_KEYWORDS.any { lower.contains(it) }         -> ReminderCategory.HOLIDAY
-            REMINDER_KEYWORDS.any { lower.contains(it) }        -> ReminderCategory.REMINDER
+            HOLIDAY_KEYWORDS.any { lower.contains(it) }         -> ReminderCategory.EVENT
+            DEADLINE_KEYWORDS.any { lower.contains(it) }        -> ReminderCategory.ACADEMIC
+            ASSIGNMENT_KEYWORDS.any { lower.contains(it) }      -> ReminderCategory.ACADEMIC
+            EXAM_KEYWORDS.any { lower.contains(it) }            -> ReminderCategory.ACADEMIC
+            MEETING_KEYWORDS.any { lower.contains(it) }         -> ReminderCategory.ACADEMIC
+            REMINDER_KEYWORDS.any { lower.contains(it) }        -> ReminderCategory.PERSONAL
             else                                                 -> ReminderCategory.OTHER
         }
     }

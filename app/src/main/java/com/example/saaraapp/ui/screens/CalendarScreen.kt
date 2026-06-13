@@ -31,15 +31,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-// Colour for each category (same as reminder screen)
+// Colour for each category
 private fun categoryColor(category: ReminderCategory): Color = when (category) {
-    ReminderCategory.DEADLINE        -> Color(0xFFE53935)
-    ReminderCategory.ASSIGNMENT      -> Color(0xFF1E88E5)
-    ReminderCategory.EXAM            -> Color(0xFF43A047)
-    ReminderCategory.MEETING         -> Color(0xFF00897B)
-    ReminderCategory.REMINDER        -> Color(0xFFFB8C00)
+    ReminderCategory.ACADEMIC        -> Color(0xFF1E88E5)
+    ReminderCategory.PERSONAL        -> Color(0xFF43A047)
+    ReminderCategory.EVENT           -> Color(0xFFE91E8C)
+    ReminderCategory.INFO            -> Color(0xFF00897B)
     ReminderCategory.SCHEDULE_CHANGE -> Color(0xFF6D4C41)
-    ReminderCategory.HOLIDAY         -> Color(0xFFE91E8C)
     ReminderCategory.OTHER           -> Color(0xFF546E7A)
 }
 
