@@ -66,6 +66,17 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
             val dao = ReminderDatabase.getDatabase(applicationContext).reminderDao()
 
+            // If this is a schedule change, try to find and update the original reminder
+            if (result.category == ReminderCategory.SCHEDULE_CHANGE) {
+                handleReschedule(
+                    dao           = dao,
+                    result        = result,
+                    newDate       = reminderDate,
+                    incomingTags  = reminder.tags
+                )
+                return@launch  // don't save the schedule-change message itself
+            }
+
             // ── Deduplication ─────────────────────────────────────────────────
             // Fetch existing reminders on the same date (or dateless ones)
             val candidates = if (reminderDate != null)
@@ -99,6 +110,59 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
     // Reminders stay in the database even after notification is dismissed
     override fun onNotificationRemoved(sbn: StatusBarNotification) { }
+
+    // ── Reschedule handler ────────────────────────────────────────────────────
+
+    /**
+     * Handles SCHEDULE_CHANGE messages:
+     * - Finds the original reminder using [result.originalDateText] + tag overlap
+     * - If new date exists: moves it to the new date
+     * - If cancelled / no new date: deletes it
+     * - If original not found: silently drops the message (nothing to reschedule)
+     */
+    private suspend fun handleReschedule(
+        dao          : ReminderDao,
+        result       : GemmaResult,
+        newDate      : java.time.LocalDate?,
+        incomingTags : List<String>
+    ) {
+        // Parse the original (old) date
+        val originalDate = result.originalDateText?.let { DateParser.parse(it) }
+
+        // Fetch candidates from the original date
+        val candidates = if (originalDate != null)
+            dao.getRemindersOnDateForReschedule(originalDate.toEpochDay())
+        else
+            dao.getDatelessReminders()
+
+        // Find the reminder whose tags overlap with the incoming message
+        val incomingTagsLower = incomingTags.map { it.lowercase() }.toSet()
+        val original = candidates.firstOrNull { entity ->
+            entity.tags.map { it.lowercase() }.any { it in incomingTagsLower }
+        }
+
+        if (original == null) {
+            Log.d("AloofService", "Reschedule: no matching original reminder found — dropping")
+            return
+        }
+
+        // Delete the original entry
+        dao.deleteReminder(original.id)
+        Log.d("AloofService", "Reschedule: deleted original reminder '${original.originalMessage}'")
+
+        if (newDate != null) {
+            // Move to the new date
+            val moved = original.copy(
+                id           = "${original.id}_rescheduled_${newDate.toEpochDay()}",
+                reminderDate = newDate.toEpochDay()
+            )
+            dao.insertReminder(moved)
+            Log.d("AloofService", "Reschedule: moved to $newDate")
+        } else {
+            // Cancelled with no new date — just deleted above
+            Log.d("AloofService", "Reschedule: cancelled with no new date — removed")
+        }
+    }
 
     override fun onDestroy() {
         super.onDestroy()

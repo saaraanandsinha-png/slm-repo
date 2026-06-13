@@ -183,13 +183,25 @@ class FunctionGemmaHelper(private val context: Context) {
      * Builds a Gemma function-calling prompt using the chat template.
      * Ends with { to force the model to start the JSON immediately.
      */
-    private fun buildPrompt(message: String): String {
-        val messages = listOf(
-            "user" to "Extract reminder data. Return ONLY JSON.\nMessage: \"$message\"\nSchema: {\"is_reminder\":bool, \"category\":string, \"date\":string, \"time\":string, \"tags\":[]}"
-        )
-        val template = LlamaBridge.applyChatTemplate(messages, true) ?: ""
-        return template + "{"
-    }
+    private fun buildPrompt(message: String): String = """
+        <start_of_turn>user
+        You are a reminder extraction assistant for a college student app.
+        Analyze the WhatsApp message below and return ONLY a valid JSON object — no extra text.
+
+        Message: "$message"
+
+        JSON format:
+        {
+          "is_reminder": true or false,
+          "category": one of [DEADLINE, ASSIGNMENT, EXAM, MEETING, REMINDER, SCHEDULE_CHANGE, HOLIDAY, OTHER],
+          "date": "new or only date string, or null",
+          "original_date": "for SCHEDULE_CHANGE only: the old date being replaced, or null",
+          "time": "extracted time string or null",
+          "tags": ["tag1", "tag2"]
+        }
+        <end_of_turn>
+        <start_of_turn>model
+    """.trimIndent()
 
     // ── Response parser ───────────────────────────────────────────────────────
 
@@ -227,12 +239,13 @@ class FunctionGemmaHelper(private val context: Context) {
             }
 
             GemmaResult(
-                isReminder   = isReminder,
-                category     = category,
-                dateText     = dateText,
-                timeText     = timeText,
-                tags         = tags,
-                fromFallback = false
+                isReminder       = isReminder,
+                category         = category,
+                dateText         = dateText,
+                originalDateText = obj.optString("original_date").takeIf { it.isNotBlank() && it != "null" },
+                timeText         = timeText,
+                tags             = tags,
+                fromFallback     = false
             )
         } catch (e: Exception) {
             Log.w(TAG, "JSON parse failed: ${e.message}")
