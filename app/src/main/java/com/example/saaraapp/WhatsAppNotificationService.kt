@@ -3,6 +3,7 @@ package com.example.saaraapp
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,16 +17,13 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // Try to load FunctionGemma if the model is already downloaded
+        // Try to load FunctionGemma. If it's in assets, initialize will copy it.
         serviceScope.launch {
             val modelFile = ModelDownloadManager.getModelFileIfExists(applicationContext)
-            if (modelFile != null) {
-                gemma.initialize(modelFile)
-                Log.i("AloofService", "FunctionGemma ready ✅")
-            } else {
-                Log.i("AloofService", "Model not downloaded yet — using keyword fallback")
-                // Download happens from MainActivity on first launch
-            }
+                ?: File(applicationContext.filesDir, "functiongemma-270m-it-Q4_K_M.gguf")
+            
+            gemma.initialize(modelFile)
+            Log.i("AloofService", "FunctionGemma initialization attempted")
         }
     }
 
@@ -42,40 +40,60 @@ class WhatsAppNotificationService : NotificationListenerService() {
         val sender  = extras.getString("android.title") ?: "Unknown"
         val message = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        // Fast rule-based pre-filter — avoids waking up the model for irrelevant messages
-        if (!KeywordExtractor.isRelevant(message)) return
+        Log.d("AloofService", "Notification received from $sender: $message")
 
-        // Save to DB on IO thread using FunctionGemma (or fallback if not ready)
+        // Save to DB on IO thread
         serviceScope.launch {
             val result = gemma.analyze(message)
 
-            // If the model says it's not a reminder, skip it
-            if (!result.isReminder) return@launch
-
             // Use Gemma's extracted date if available, otherwise fall back to DateParser
             val (reminderDate, reminderDateEnd) = if (result.dateText != null) {
-                Pair(
-                    DateParser.parse(result.dateText),
-                    null
-                )
+                Pair(DateParser.parse(result.dateText), null)
             } else {
                 DateParser.extractRangeFrom(message)
             }
 
             val reminder = ReminderItem(
-                id              = "${sbn.packageName}_${(sender + message).hashCode()}",
+                id              = "${sbn.packageName}_${System.currentTimeMillis()}_${(sender + message).hashCode()}",
                 sender          = sender,
                 originalMessage = message,
-                tags            = result.tags.ifEmpty { KeywordExtractor.extractTags(message) },
+                tags            = if (result.fromFallback) KeywordExtractor.extractTags(message) else result.tags,
                 category        = result.category,
                 time            = sbn.postTime,
                 reminderDate    = reminderDate,
                 reminderDateEnd = reminderDateEnd
             )
 
-            ReminderDatabase.getDatabase(applicationContext)
-                .reminderDao()
-                .insertReminder(reminder.toEntity())
+            val dao = ReminderDatabase.getDatabase(applicationContext).reminderDao()
+
+            // ── Deduplication ─────────────────────────────────────────────────
+            // Fetch existing reminders on the same date (or dateless ones)
+            val candidates = if (reminderDate != null)
+                dao.getRemindersOnDate(reminderDate.toEpochDay())
+            else
+                dao.getDatelessReminders()
+
+            val duplicate = candidates
+                .map { it.toReminderItem() }
+                .firstOrNull { ReminderDeduplicator.isSimilar(it, reminder) }
+
+            if (duplicate != null) {
+                val existingScore = ReminderDeduplicator.qualityScore(duplicate.originalMessage)
+                val incomingScore = ReminderDeduplicator.qualityScore(reminder.originalMessage)
+
+                if (incomingScore <= existingScore) {
+                    // Existing is better or equal — skip the new one
+                    Log.d("AloofService", "Duplicate skipped (existing is higher quality)")
+                    return@launch
+                } else {
+                    // Incoming is better — replace the existing one
+                    Log.d("AloofService", "Duplicate replaced (incoming is higher quality)")
+                    dao.deleteReminder(duplicate.id)
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────
+
+            dao.insertReminder(reminder.toEntity())
         }
     }
 

@@ -24,4 +24,12 @@ interface ReminderDao {
     // Clear all reminders
     @Query("DELETE FROM reminders")
     suspend fun clearAll()
+
+    // Get all reminders on a specific date (for deduplication)
+    @Query("SELECT * FROM reminders WHERE reminderDate = :epochDay")
+    suspend fun getRemindersOnDate(epochDay: Long): List<ReminderEntity>
+
+    // Get all reminders with no date (for deduplication of dateless reminders)
+    @Query("SELECT * FROM reminders WHERE reminderDate IS NULL")
+    suspend fun getDatelessReminders(): List<ReminderEntity>
 }
