@@ -10,8 +10,32 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+/**
+ * A [NotificationListenerService] that intercepts WhatsApp notifications and
+ * uses on-device AI to extract reminders from message text.
+ *
+ * ## How it works
+ * 1. Android calls [onListenerConnected] when the user grants notification access.
+ *    At that point we initialise [FunctionGemmaHelper] so the model is warm by the
+ *    time the first message arrives.
+ * 2. Every incoming notification is received in [onNotificationPosted].
+ *    Non-WhatsApp and group-summary notifications are filtered out immediately.
+ * 3. The message text is run through [FunctionGemmaHelper.analyze] to determine
+ *    whether it's a reminder and to extract structured fields (date, time, category).
+ * 4. A [ReminderItem] is built and checked for duplicates before being saved to
+ *    the Room database via [ReminderDao].
+ * 5. If the AI flags the message as a [ReminderCategory.SCHEDULE_CHANGE], the
+ *    original reminder is found and updated or deleted instead of saving a new entry.
+ *
+ * ## Required permission
+ * This service requires the `BIND_NOTIFICATION_LISTENER_SERVICE` permission and
+ * must be declared in `AndroidManifest.xml`. The user must also manually grant
+ * notification access in **Settings > Apps > Special app access > Notification access**.
+ */
 class WhatsAppNotificationService : NotificationListenerService() {
 
+    // SupervisorJob ensures that if one coroutine fails (e.g. a DB write),
+    // it doesn't cancel the entire scope and bring down all other in-flight work.
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val gemma by lazy { FunctionGemmaHelper(applicationContext) }
 
@@ -27,7 +51,19 @@ class WhatsAppNotificationService : NotificationListenerService() {
         }
     }
 
+    /**
+     * Called by Android for every notification posted on the device.
+     *
+     * ## Pipeline
+     * 1. **Filter** — ignore non-WhatsApp packages and group-summary notifications
+     * 2. **Extract** — pull sender and message text from the notification extras
+     * 3. **Analyse** — run [FunctionGemmaHelper.analyze] to classify the message
+     * 4. **Route** — if it's a [ReminderCategory.SCHEDULE_CHANGE], delegate to [handleReschedule]
+     * 5. **Deduplicate** — compare against existing reminders on the same date
+     * 6. **Save** — insert the new [ReminderItem] into the Room database
+     */
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        // com.whatsapp = standard WhatsApp, com.whatsapp.w4b = WhatsApp Business
         val isWhatsApp = sbn.packageName == "com.whatsapp" ||
                          sbn.packageName == "com.whatsapp.w4b"
         if (!isWhatsApp) return
@@ -42,7 +78,7 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
         Log.d("AloofService", "Notification received from $sender: $message")
 
-        // Save to DB on IO thread
+        // All DB and inference work is done off the main thread
         serviceScope.launch {
             val result = gemma.analyze(message)
 
@@ -78,7 +114,14 @@ class WhatsAppNotificationService : NotificationListenerService() {
             }
 
             // ── Deduplication ─────────────────────────────────────────────────
-            // Fetch existing reminders on the same date (or dateless ones)
+            // WhatsApp often sends multiple notifications for the same event
+            // (e.g. a forwarded message and a direct reply). We compare the new
+            // reminder against existing ones on the same date using
+            // [ReminderDeduplicator.isSimilar] (tag + text overlap).
+            //
+            // If a duplicate is found, we keep whichever message has the higher
+            // quality score (longer, more structured text wins). This way we
+            // always store the most informative version of a reminder.
             val candidates = if (reminderDate != null)
                 dao.getRemindersOnDate(reminderDate.toEpochDay())
             else
