@@ -32,5 +32,20 @@ git clone https://github.com/saaraanandsinha-png/slm-repo.git
 3. Run on a device with API 26+
 4. Grant notification access — **Settings → Apps → Special app access → Notification access**
 
+## architecture
+```
+WhatsApp notification
+        ↓
+WhatsAppNotificationService
+        ↓
+FunctionGemmaHelper (on-device SLM)
+        ↓
+GemmaResult (category, date, time, tags)
+        ↓
+ReminderDeduplicator → RoomDB
+        ↓
+NotificationViewModel → Compose UI
+```
+
 ## contributing
 See [AGENTS.md](./AGENTS.md) for commit conventions and project structure.
