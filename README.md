@@ -2,7 +2,7 @@
 
 > *stay aloof, yet informed.*
 
-Aloof is an Android app that extracts reminders from your WhatsApp messages entirely on-device — no noise, no cloud, no distractions.
+Aloof is an Android app that locally extracts reminders from your WhatsApp messages — no noise, no cloud, no distractions.
 
 ---
 
