@@ -131,7 +131,7 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
         // Fetch candidates from the original date
         val candidates = if (originalDate != null)
-            dao.getRemindersOnDateForReschedule(originalDate.toEpochDay())
+            dao.getRemindersOnDate(originalDate.toEpochDay())
         else
             dao.getDatelessReminders()
 

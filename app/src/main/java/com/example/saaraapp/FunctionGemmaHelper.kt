@@ -75,20 +75,6 @@ class FunctionGemmaHelper(private val context: Context) {
 
             val ok = LlamaBridge.initGenerateModel(finalFile.absolutePath)
             if (ok) {
-                // Apply again after init to ensure settings are active
-                LlamaBridge.updateGenerateParams(
-                    temperature = 0.1f,
-                    maxTokens = 128,
-                    topP = 0.95f,
-                    topK = 40,
-                    repeatPenalty = 1.1f,
-                    contextLength = 1024,
-                    numThreads = 4,
-                    useMmap = true,
-                    flashAttention = false,
-                    batchSize = 512,
-                    gpuLayers = 0
-                )
                 isReady = true
                 Log.i(TAG, "FunctionGemma loaded and tuned from ${finalFile.name}")
             } else {
@@ -117,10 +103,8 @@ class FunctionGemmaHelper(private val context: Context) {
             
             val rawResponse = generateInternal(prompt)
             Log.d(TAG, "Generation finished. Raw length: ${rawResponse.length}")
-            
-            // Prepend { because the prompt pre-fills the opening brace
-            val response = "{" + rawResponse
-            parseResponse(response) ?: fallback(message)
+
+            parseResponse(rawResponse) ?: fallback(message)
         } catch (e: Exception) {
             Log.e(TAG, "Inference error: ${e.message} — using fallback")
             fallback(message)
@@ -181,7 +165,6 @@ class FunctionGemmaHelper(private val context: Context) {
 
     /**
      * Builds a Gemma function-calling prompt using the chat template.
-     * Ends with { to force the model to start the JSON immediately.
      */
     private fun buildPrompt(message: String): String = """
         <start_of_turn>user

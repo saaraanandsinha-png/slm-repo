@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,7 +16,6 @@ import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderItem
 import com.example.saaraapp.toLocalDate
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
@@ -57,7 +55,7 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
         HorizontalDivider()
 
         // ── Content ─────────────────────────────────────────
-        if (sortedReminders.isEmpty()) {
+        if (todayReminders.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -75,7 +73,7 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
             }
         } else {
             Text(
-                text = "${sortedReminders.size} message${if (sortedReminders.size > 1) "s" else ""} captured",
+                text = "${todayReminders.size} message${if (todayReminders.size > 1) "s" else ""} captured",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -84,7 +82,7 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(sortedReminders) { reminder ->
+                items(todayReminders) { reminder ->
                     CalendarReminderCard(reminder, highlight = true)
                 }
                 item { Spacer(Modifier.height(16.dp)) }
