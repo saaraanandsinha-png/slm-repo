@@ -15,7 +15,18 @@ import kotlin.coroutines.resumeWithException
 
 /**
  * Wraps Llama.cpp (via LLamatik) to run FunctionGemma 270M on-device.
- * Using streaming generation for better reliability and stop-sequence handling.
+ *
+ * ## How it works
+ * 1. **Initialize** — [initialize] loads the GGUF model file into memory via [LlamaBridge].
+ *    If the file isn't on disk yet, it tries to copy it from the app's assets folder first.
+ * 2. **Prompt** — [buildPrompt] wraps the incoming WhatsApp message in a Gemma chat template,
+ *    instructing the model to return a structured JSON reminder object.
+ * 3. **Generate** — [generateInternal] runs streaming inference via [LlamaBridge.generateStream].
+ *    Streaming is used instead of a blocking call for better reliability and so we can
+ *    manually intercept Gemma's stop sequences (e.g. `<end_of_turn>`).
+ * 4. **Parse** — [parseResponse] extracts and validates the JSON from the raw model output.
+ * 5. **Fallback** — If the model isn't ready or JSON parsing fails, [fallback] kicks in
+ *    and uses rule-based [KeywordExtractor] logic instead.
  */
 class FunctionGemmaHelper(private val context: Context) {
 
@@ -130,13 +141,27 @@ class FunctionGemmaHelper(private val context: Context) {
 
     /**
      * Internal helper that wraps streaming generation into a suspend function.
-     * Manually checks for stop sequences to prevent infinite generation.
+     *
+     * We use [suspendCancellableCoroutine] to bridge the callback-based [LlamaBridge.generateStream]
+     * API into Kotlin coroutines. Each token is delivered via [GenStream.onDelta] as it's generated.
+     *
+     * **Why manual stop sequence checking?**
+     * LlamaBridge does not automatically recognise Gemma's `<end_of_turn>` token as a stop signal.
+     * Without this check the model would continue generating past the end of its response —
+     * potentially repeating the prompt or hallucinating extra content. We cancel generation
+     * immediately when any stop token is detected and return whatever was accumulated so far.
+     *
+     * **Why coroutine cancellation support?**
+     * If the calling coroutine is cancelled (e.g. the user navigates away), we call
+     * [LlamaBridge.nativeCancelGenerate] to stop inference immediately and free the CPU.
      */
     private suspend fun generateInternal(prompt: String): String = suspendCancellableCoroutine { cont ->
         val output = StringBuilder()
         val callback = object : GenStream {
             override fun onDelta(text: String) {
-                // Manual stop sequence check for Gemma and safety
+                // Gemma uses <end_of_turn> to signal the end of its response.
+                // We also guard against "user" / "User:" in case the model starts
+                // echoing the next turn of the conversation instead of stopping.
                 if (text.contains("<end_of_turn>") || text.contains("user") || text.contains("User:")) {
                     LlamaBridge.nativeCancelGenerate()
                     if (cont.isActive) cont.resume(output.toString())
@@ -156,6 +181,7 @@ class FunctionGemmaHelper(private val context: Context) {
 
         LlamaBridge.generateStream(prompt, callback)
 
+        // If the coroutine is cancelled externally, stop native inference immediately
         cont.invokeOnCancellation {
             LlamaBridge.nativeCancelGenerate()
         }
@@ -164,7 +190,21 @@ class FunctionGemmaHelper(private val context: Context) {
     // ── Prompt ────────────────────────────────────────────────────────────────
 
     /**
-     * Builds a Gemma function-calling prompt using the chat template.
+     * Builds a structured prompt using Gemma's chat template format.
+     *
+     * **Why this structure?**
+     * Gemma is fine-tuned to follow the `<start_of_turn>user ... <end_of_turn>` / `<start_of_turn>model`
+     * pattern. Using this format (rather than a plain string) significantly improves instruction
+     * following and JSON output reliability.
+     *
+     * **Why ask for JSON?**
+     * Structured JSON output lets us reliably extract fields (date, time, category, tags)
+     * without fragile regex on free-form text. The field list mirrors [GemmaResult].
+     *
+     * **Why list the categories explicitly?**
+     * Without an explicit list, the model may invent category names. Constraining it to
+     * [ACADEMIC, PERSONAL, EVENT, INFO, SCHEDULE_CHANGE, OTHER] keeps output predictable
+     * and directly mappable to [ReminderCategory].
      */
     private fun buildPrompt(message: String): String = """
         <start_of_turn>user
@@ -191,14 +231,28 @@ class FunctionGemmaHelper(private val context: Context) {
     /**
      * Parses the raw model output into a [GemmaResult].
      * Returns null if the JSON is malformed (caller falls back to keyword rules).
+     *
+     * **Why strip markdown fences?**
+     * Even when explicitly told not to, Gemma sometimes wraps its JSON in ` ```json ... ``` `
+     * code fences. We strip these defensively before parsing.
+     *
+     * **Why search for `{` / `}` boundaries?**
+     * The model may prepend a short explanation before the JSON (e.g. "Here is the result:").
+     * Rather than failing, we locate the first `{` and last `}` to extract just the JSON block.
+     * If no valid block is found we return null and let the caller fall back to [KeywordExtractor].
+     *
+     * **Why use `optString` / `optBoolean` instead of `getString`?**
+     * These methods return a default value instead of throwing if a key is missing or null,
+     * making parsing resilient to partially-formed model responses.
      */
     private fun parseResponse(raw: String): GemmaResult? {
         return try {
-            // Strip any markdown code fences and find the JSON block
+            // Strip markdown code fences the model may have added despite instructions
             val json = raw
                 .replace(Regex("```json|```"), "")
                 .trim()
                 .let { text ->
+                    // Find the outermost JSON object — ignore any preamble text
                     val start = text.indexOf('{')
                     val end   = text.lastIndexOf('}')
                     if (start != -1 && end != -1 && end > start) {
@@ -206,7 +260,7 @@ class FunctionGemmaHelper(private val context: Context) {
                     } else {
                         null
                     }
-                } ?: return null // Fail if no valid { } block is found
+                } ?: return null // No valid JSON block found — caller will use fallback
 
             val obj        = JSONObject(json)
             val isReminder = obj.optBoolean("is_reminder", false)
