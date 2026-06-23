@@ -3,7 +3,6 @@ package com.example.saaraapp.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import com.example.saaraapp.ui.components.buildHighlightedMessage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.saaraapp.NotificationViewModel
+import com.example.saaraapp.ui.components.buildHighlightedMessage
 import com.example.saaraapp.ReminderCategory
 import com.example.saaraapp.ReminderItem
 import com.example.saaraapp.groupRemindersByDate
@@ -269,7 +269,12 @@ fun DayCell(
 
 // ── Reminder card for selected day ────────────────────────────────────────────
 @Composable
-fun CalendarReminderCard(reminder: ReminderItem, highlight: Boolean = false) {
+fun CalendarReminderCard(
+    reminder: ReminderItem,
+    highlight: Boolean = false,
+    onSetReminder: (() -> Unit)? = null,
+    onDismissReminder: (() -> Unit)? = null
+) {
     val color = categoryColor(reminder.category)
     val displayMessage = if (highlight) {
         buildHighlightedMessage(
@@ -320,6 +325,31 @@ fun CalendarReminderCard(reminder: ReminderItem, highlight: Boolean = false) {
                     color      = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 20.sp
                 )
+                // ── Time reminder prompt (Today screen only) ──
+                val showPrompt = onSetReminder != null &&
+                    reminder.scheduledAlarmTime == null &&
+                    !reminder.reminderPromptDismissed
+                if (showPrompt) {
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text  = "Do you want a specific time reminder?",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick      = { onDismissReminder?.invoke() },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) { Text("No", fontSize = 12.sp) }
+                        Button(
+                            onClick      = { onSetReminder?.invoke() },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) { Text("Yes", fontSize = 12.sp) }
+                    }
+                }
             }
         }
     }

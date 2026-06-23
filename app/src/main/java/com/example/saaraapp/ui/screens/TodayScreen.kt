@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,12 +21,42 @@ import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderItem
 import com.example.saaraapp.toLocalDate
 import java.time.LocalDate
+import java.util.Calendar
 
 @Composable
 fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
     val reminders by viewModel.reminders.collectAsState()
+    val isModelReady by FunctionGemmaHelper.isReady.collectAsState()
     val today = LocalDate.now()
+    val context = LocalContext.current
 
+    // Reminder selected for time picking
+    var reminderForTimePicker by remember { mutableStateOf<ReminderItem?>(null) }
+    val timePickerState = rememberTimePickerState(initialHour = 9, initialMinute = 0)
+
+    // Time picker dialog
+    reminderForTimePicker?.let { reminder ->
+        AlertDialog(
+            onDismissRequest = { reminderForTimePicker = null },
+            title = { Text("Set reminder time") },
+            text  = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cal = Calendar.getInstance().apply {
+                        val date = reminder.reminderDate ?: today
+                        set(date.year, date.monthValue - 1, date.dayOfMonth,
+                            timePickerState.hour, timePickerState.minute, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    viewModel.scheduleAlarm(context, reminder, cal.timeInMillis)
+                    reminderForTimePicker = null
+                }) { Text("Set") }
+            },
+            dismissButton = {
+                TextButton(onClick = { reminderForTimePicker = null }) { Text("Cancel") }
+            }
+        )
+    }
     val todayReminders = remember(reminders) {
         reminders.filter { reminder ->
             val start = reminder.reminderDate ?: reminder.time.toLocalDate()
@@ -116,7 +147,12 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(todayReminders) { reminder ->
-                    CalendarReminderCard(reminder, highlight = true)
+                    CalendarReminderCard(
+                        reminder          = reminder,
+                        highlight         = true,
+                        onSetReminder     = { reminderForTimePicker = reminder },
+                        onDismissReminder = { viewModel.dismissReminderPrompt(reminder.id) }
+                    )
                 }
                 item { Spacer(Modifier.height(16.dp)) }
             }
