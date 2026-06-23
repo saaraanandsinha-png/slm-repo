@@ -32,4 +32,12 @@ interface ReminderDao {
     // Get all reminders with no date (for deduplication of dateless reminders)
     @Query("SELECT * FROM reminders WHERE reminderDate IS NULL")
     suspend fun getDatelessReminders(): List<ReminderEntity>
+
+    // Dismiss the time reminder prompt for a specific reminder
+    @Query("UPDATE reminders SET reminderPromptDismissed = 1 WHERE id = :id")
+    suspend fun dismissReminderPrompt(id: String)
+
+    // Set the scheduled alarm time for a specific reminder
+    @Query("UPDATE reminders SET scheduledAlarmTime = :alarmTime WHERE id = :id")
+    suspend fun setAlarmTime(id: String, alarmTime: Long)
 }

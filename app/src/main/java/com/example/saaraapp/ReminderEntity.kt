@@ -16,7 +16,9 @@ data class ReminderEntity(
     val category: String,
     val time: Long,
     val reminderDate: Long? = null,     // stored as epoch day (LocalDate.toEpochDay())
-    val reminderDateEnd: Long? = null   // end of range, null if single date
+    val reminderDateEnd: Long? = null,   // end of range, null if single date
+    val scheduledAlarmTime: Long? = null,      // epoch millis of scheduled alarm, null if not set
+    val reminderPromptDismissed: Boolean = false // true if user tapped "No" on the time reminder prompt
 )
 
 class TagsConverter {
@@ -36,7 +38,9 @@ fun ReminderEntity.toReminderItem() = ReminderItem(
     category        = ReminderCategory.valueOf(category),
     time            = time,
     reminderDate    = reminderDate?.let { LocalDate.ofEpochDay(it) },
-    reminderDateEnd = reminderDateEnd?.let { LocalDate.ofEpochDay(it) }
+    reminderDateEnd = reminderDateEnd?.let { LocalDate.ofEpochDay(it) },
+    scheduledAlarmTime       = scheduledAlarmTime,
+    reminderPromptDismissed  = reminderPromptDismissed
 )
 
 fun ReminderItem.toEntity() = ReminderEntity(
@@ -47,5 +51,7 @@ fun ReminderItem.toEntity() = ReminderEntity(
     category        = category.name,
     time            = time,
     reminderDate    = reminderDate?.toEpochDay(),
-    reminderDateEnd = reminderDateEnd?.toEpochDay()
+    reminderDateEnd = reminderDateEnd?.toEpochDay(),
+    scheduledAlarmTime      = scheduledAlarmTime,
+    reminderPromptDismissed = reminderPromptDismissed
 )

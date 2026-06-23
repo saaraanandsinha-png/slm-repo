@@ -17,5 +17,7 @@ data class ReminderItem(
     val category: ReminderCategory,
     val time: Long,
     val reminderDate: java.time.LocalDate? = null,
-    val reminderDateEnd: java.time.LocalDate? = null
+    val reminderDateEnd: java.time.LocalDate? = null,
+    val scheduledAlarmTime: Long? = null,
+    val reminderPromptDismissed: Boolean = false
 )
