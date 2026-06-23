@@ -5,6 +5,8 @@ import android.util.Log
 import com.llamatik.library.platform.GenStream
 import com.llamatik.library.platform.LlamaBridge
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -38,7 +40,7 @@ class FunctionGemmaHelper(private val context: Context) {
      */
     suspend fun initialize(modelFile: File) = withContext(Dispatchers.IO) {
         try {
-            if (isReady) return@withContext
+            if (_isReady.value) return@withContext
 
             var finalFile = modelFile
             
@@ -86,14 +88,14 @@ class FunctionGemmaHelper(private val context: Context) {
 
             val ok = LlamaBridge.initGenerateModel(finalFile.absolutePath)
             if (ok) {
-                isReady = true
+                _isReady.value = true
                 Log.i(TAG, "FunctionGemma loaded and tuned from ${finalFile.name}")
             } else {
                 Log.e(TAG, "LlamaBridge failed to load model from ${finalFile.absolutePath}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "LlamaBridge error: ${e.message}")
-            isReady = false
+            _isReady.value = false
         }
     }
 
@@ -103,7 +105,7 @@ class FunctionGemmaHelper(private val context: Context) {
      * Analyzes [message] and returns a [GemmaResult].
      */
     suspend fun analyze(message: String): GemmaResult = withContext(Dispatchers.Default) {
-        if (!isReady) {
+        if (!_isReady.value) {
             Log.d(TAG, "Model not ready — using KeywordExtractor fallback")
             return@withContext fallback(message)
         }
@@ -127,7 +129,7 @@ class FunctionGemmaHelper(private val context: Context) {
      * Used for testing the model's raw performance in the Chat tab.
      */
     suspend fun askGemma(message: String): String = withContext(Dispatchers.Default) {
-        if (!isReady) return@withContext "Model not ready."
+        if (!_isReady.value) return@withContext "Model not ready."
 
         try {
             val messages = listOf("user" to message)
@@ -311,11 +313,13 @@ class FunctionGemmaHelper(private val context: Context) {
 
     fun close() {
         LlamaBridge.shutdown()
-        isReady = false
+        _isReady.value = false
     }
 
     companion object {
         private const val TAG = "FunctionGemma"
-        private var isReady: Boolean = false
+        private val _isReady = MutableStateFlow(false)
+        /** Observable model readiness state — observed by the UI to show a loading banner. */
+        val isReady: StateFlow<Boolean> = _isReady
     }
 }

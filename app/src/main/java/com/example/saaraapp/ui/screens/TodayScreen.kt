@@ -1,5 +1,8 @@
 package com.example.saaraapp.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.saaraapp.FunctionGemmaHelper
 import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderItem
 import com.example.saaraapp.toLocalDate
@@ -53,6 +57,35 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
         }
 
         HorizontalDivider()
+
+        // ── Model loading banner ─────────────────────────────
+        AnimatedVisibility(
+            visible = !isModelReady,
+            enter   = fadeIn(),
+            exit    = fadeOut()
+        ) {
+            Surface(
+                color    = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color       = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text  = "Model loading — reminders will be AI-classified once ready",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
 
         // ── Content ─────────────────────────────────────────
         if (todayReminders.isEmpty()) {
