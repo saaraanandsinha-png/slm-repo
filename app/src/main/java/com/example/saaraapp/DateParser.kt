@@ -7,6 +7,25 @@ import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
+/**
+ * Parses date strings extracted from WhatsApp messages into [LocalDate] values.
+ *
+ * ## Supported formats
+ * - **Relative:** "today", "tomorrow", "tonight", "this week", "next week", "weekend"
+ * - **Day of week:** "monday", "mon", "friday", "fri", etc.
+ * - **Specific dates:** "12th June", "June 12", "12/6", "12-6", "12 Jun 2025"
+ * - **Date ranges:** "June 11-12", "June 11 & 12", "11th to 15th June", "June 11 and June 12"
+ *
+ * ## Entry points
+ * - [extractRangeFrom] — preferred; returns a (start, end) pair for a full message
+ * - [extractFrom] — returns the single best date found in a message
+ * - [parse] — turns a single tag string (e.g. "tomorrow", "friday") into a date
+ *
+ * ## Year assumption
+ * When only a month+day is given (no year), the current year is assumed.
+ * If the resulting date is more than 7 days in the past, the next year is used instead —
+ * so "Jan 5" in December will resolve to next January, not last January.
+ */
 object DateParser {
 
     private val DAY_MAP = mapOf(
@@ -19,7 +38,7 @@ object DateParser {
         "sunday"    to DayOfWeek.SUNDAY,    "sun" to DayOfWeek.SUNDAY
     )
 
-    // Sub-expressions used in RANGE_PATTERN
+    // Sub-expressions used to build RANGE_PATTERN below
     private val MONTH_RE = """(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"""
     private val DAY_RE   = """\d{1,2}(?:st|nd|rd|th)?"""
     private val SEP_RE   = """(?:\s*[-–]\s*|\s*&\s*|\s+(?:and|to|through|till|until)\s+)"""
@@ -128,7 +147,7 @@ object DateParser {
     private fun parseSpecificDate(text: String): LocalDate? {
         val today = LocalDate.now()
 
-        // Strip ordinal suffixes: "12th" → "12"
+        // Strip ordinal suffixes before trying formatters: "12th" → "12", "3rd" → "3"
         val cleaned = text.replace(Regex("""(\d+)(st|nd|rd|th)""", RegexOption.IGNORE_CASE), "$1").trim()
 
         val formats = listOf(
