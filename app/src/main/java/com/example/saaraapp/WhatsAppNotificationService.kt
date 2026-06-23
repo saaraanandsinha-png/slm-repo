@@ -76,7 +76,7 @@ class WhatsAppNotificationService : NotificationListenerService() {
         val sender  = extras.getString("android.title") ?: "Unknown"
         val message = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        Log.d("AloofService", "Notification received from $sender: $message")
+        if (BuildConfig.DEBUG) Log.d("AloofService", "Notification received from $sender: $message")
 
         // All DB and inference work is done off the main thread
         serviceScope.launch {
@@ -191,7 +191,7 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
         // Delete the original entry
         dao.deleteReminder(original.id)
-        Log.d("AloofService", "Reschedule: deleted original reminder '${original.originalMessage}'")
+        if (BuildConfig.DEBUG) Log.d("AloofService", "Reschedule: deleted original reminder '${original.originalMessage}'")
 
         if (newDate != null) {
             // Move to the new date

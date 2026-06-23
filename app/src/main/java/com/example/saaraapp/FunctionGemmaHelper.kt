@@ -132,7 +132,7 @@ class FunctionGemmaHelper(private val context: Context) {
         try {
             val messages = listOf("user" to message)
             val prompt = LlamaBridge.applyChatTemplate(messages, true) ?: message
-            Log.d(TAG, "Chatting with prompt: $prompt")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Chatting with prompt: $prompt")
             generateInternal(prompt)
         } catch (e: Exception) {
             "Error: ${e.message}"
