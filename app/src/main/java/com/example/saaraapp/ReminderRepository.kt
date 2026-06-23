@@ -22,4 +22,12 @@ class ReminderRepository(private val dao: ReminderDao) {
     suspend fun clearAll() {
         dao.clearAll()
     }
+
+    suspend fun dismissReminderPrompt(id: String) {
+        dao.dismissReminderPrompt(id)
+    }
+
+    suspend fun setAlarmTime(id: String, alarmTime: Long) {
+        dao.setAlarmTime(id, alarmTime)
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.saaraapp
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,4 +30,21 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
     fun clearAll() {
         viewModelScope.launch { repository.clearAll() }
     }
-}
+
+    /** User tapped "No" on the time reminder prompt — dismiss it forever. */
+    fun dismissReminderPrompt(id: String) {
+        viewModelScope.launch { repository.dismissReminderPrompt(id) }
+    }
+
+    /** User selected a time — schedule the alarm and save it to the DB. */
+    fun scheduleAlarm(context: Context, reminder: ReminderItem, alarmTimeMillis: Long) {
+        viewModelScope.launch {
+            repository.setAlarmTime(reminder.id, alarmTimeMillis)
+            AlarmScheduler.schedule(
+                context        = context,
+                reminderId     = reminder.id,
+                message        = reminder.originalMessage,
+                triggerAtMillis = alarmTimeMillis
+            )
+        }
+    }

@@ -148,6 +148,20 @@ class WhatsAppNotificationService : NotificationListenerService() {
             // ─────────────────────────────────────────────────────────────────
 
             dao.insertReminder(reminder.toEntity())
+
+            // Auto-schedule alarm if AI extracted a specific time
+            if (result.timeText != null && reminderDate != null) {
+                val alarmMillis = parseAlarmMillis(result.timeText, reminderDate)
+                if (alarmMillis != null && alarmMillis > System.currentTimeMillis()) {
+                    dao.setAlarmTime(reminder.id, alarmMillis)
+                    AlarmScheduler.schedule(
+                        context         = applicationContext,
+                        reminderId      = reminder.id,
+                        message         = reminder.originalMessage,
+                        triggerAtMillis = alarmMillis
+                    )
+                }
+            }
         }
     }
 
@@ -211,5 +225,29 @@ class WhatsAppNotificationService : NotificationListenerService() {
         super.onDestroy()
         gemma.close()
         serviceScope.cancel()
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Combines a raw time string (e.g. "5:00 PM", "17:00") with a [date] to
+     * produce epoch milliseconds for [AlarmScheduler]. Returns null if parsing fails.
+     */
+    private fun parseAlarmMillis(timeText: String, date: java.time.LocalDate): Long? {
+        return try {
+            val formats = listOf("h:mm a", "hh:mm a", "H:mm", "HH:mm", "h a", "ha")
+            for (fmt in formats) {
+                try {
+                    val time = java.time.LocalTime.parse(
+                        timeText.trim().uppercase(),
+                        java.time.format.DateTimeFormatter.ofPattern(fmt, java.util.Locale.ENGLISH)
+                    )
+                    return java.time.LocalDateTime.of(date, time)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toInstant().toEpochMilli()
+                } catch (_: Exception) { }
+            }
+            null
+        } catch (_: Exception) { null }
     }
 }
