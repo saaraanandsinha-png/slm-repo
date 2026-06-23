@@ -23,12 +23,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderItem
+import com.example.saaraapp.groupRemindersByDate
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.time.DayOfWeek
-import java.util.*
 
 @Composable
 fun WeekScreen(viewModel: NotificationViewModel = viewModel()) {
@@ -44,24 +43,7 @@ fun WeekScreen(viewModel: NotificationViewModel = viewModel()) {
     val weekEnd  = weekStart.plusDays(6)
 
     // Group reminders by date — ranged reminders appear on every day in their range
-    val remindersByDate: Map<LocalDate, List<ReminderItem>> = remember(reminders) {
-        val map = mutableMapOf<LocalDate, MutableList<ReminderItem>>()
-        reminders.forEach { reminder ->
-            val start = reminder.reminderDate
-                ?: Date(reminder.time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            val end = reminder.reminderDateEnd
-            if (end != null && !end.isBefore(start)) {
-                var d = start
-                while (!d.isAfter(end)) {
-                    map.getOrPut(d) { mutableListOf() }.add(reminder)
-                    d = d.plusDays(1)
-                }
-            } else {
-                map.getOrPut(start) { mutableListOf() }.add(reminder)
-            }
-        }
-        map
-    }
+    val remindersByDate = remember(reminders) { groupRemindersByDate(reminders) }
 
     val selectedDayReminders = remindersByDate[selectedDate] ?: emptyList()
 

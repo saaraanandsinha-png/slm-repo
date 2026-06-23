@@ -15,20 +15,23 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderItem
-import com.example.saaraapp.WhatsAppNotificationScreen
+import com.example.saaraapp.toLocalDate
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 @Composable
 fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
     val reminders by viewModel.reminders.collectAsState()
     val today = LocalDate.now()
 
-    // Sort: newest first
-    val sortedReminders = remember(reminders) {
-        reminders.sortedByDescending { it.time }
+    val todayReminders = remember(reminders) {
+        reminders.filter { reminder ->
+            val start = reminder.reminderDate ?: reminder.time.toLocalDate()
+            val end = reminder.reminderDateEnd
+            // Show if today falls anywhere within the reminder's date range
+            if (end != null) !today.isBefore(start) && !today.isAfter(end)
+            else start == today
+        }
     }
 
     Column(

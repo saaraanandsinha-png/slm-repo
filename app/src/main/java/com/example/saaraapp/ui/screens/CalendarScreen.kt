@@ -25,11 +25,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.saaraapp.NotificationViewModel
 import com.example.saaraapp.ReminderCategory
 import com.example.saaraapp.ReminderItem
+import com.example.saaraapp.groupRemindersByDate
+import com.example.saaraapp.toLocalDate
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 // Colour for each category
 private fun categoryColor(category: ReminderCategory): Color = when (category) {
@@ -48,23 +48,7 @@ fun CalendarScreen(viewModel: NotificationViewModel = viewModel()) {
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
     // Group reminders by date — ranged reminders appear on every day in their range
-    val remindersByDate: Map<LocalDate, List<ReminderItem>> = remember(reminders) {
-        val map = mutableMapOf<LocalDate, MutableList<ReminderItem>>()
-        reminders.forEach { reminder ->
-            val start = reminder.reminderDate ?: reminder.time.toLocalDate()
-            val end   = reminder.reminderDateEnd
-            if (end != null && !end.isBefore(start)) {
-                var d = start
-                while (!d.isAfter(end)) {
-                    map.getOrPut(d) { mutableListOf() }.add(reminder)
-                    d = d.plusDays(1)
-                }
-            } else {
-                map.getOrPut(start) { mutableListOf() }.add(reminder)
-            }
-        }
-        map
-    }
+    val remindersByDate = remember(reminders) { groupRemindersByDate(reminders) }
 
     // Reminders for the selected day
     val selectedDayReminders = remindersByDate[selectedDate] ?: emptyList()
@@ -341,6 +325,3 @@ fun CalendarReminderCard(reminder: ReminderItem, highlight: Boolean = false) {
     }
 }
 
-// ── Helper: Long → LocalDate ──────────────────────────────────────────────────
-private fun Long.toLocalDate(): LocalDate =
-    Date(this).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
